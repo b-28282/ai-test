@@ -24,6 +24,11 @@ jobs:
           echo "Showing first 50 lines of the diff:"
           head -n 50 push-diff.txt
 
+      - name: Install PydanticAI
+        run: |
+          pip install pydantic-ai
+
+
       - name: Run Diff Processing Script
         run: python process_diff.py push-diff.txt
         env:
