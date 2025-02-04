@@ -3,7 +3,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
 
 model = GeminiModel("gemini-1.5-flash")
-agent = Agent(model, system_prompt="Check the following diff for vulnerabilities in accordance with OWASP Top Ten. If it is, explain why. Keep it one sentence. If a vulnerability is found, use toggle_vulnerability_flag function. It has no arguments.")
+agent = Agent(model, system_prompt="Check the following diff for vulnerabilities in accordance with OWASP Top Ten. If it is, explain why. Keep it one sentence. If a vulnerability is certainly found, use toggle_vulnerability_flag function. It has no arguments. If you need more context, do NOT toggle.")
 
 is_vulnerable = False
 
