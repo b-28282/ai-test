@@ -1,22 +1,27 @@
-name: Get PR Diff and Use in Script
+name: Process Git Diff on Push
+
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches:
+      - main  # Change to the branch you want to track
 
 jobs:
-  get-pr-diff:
+  get-diff-on-push:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Ensures we have at least one previous commit for diff
+          fetch-depth: 2  # Ensure we get the previous commit for diff comparison
 
-      - name: Get PR Diff
+      - name: Get Diff from Last Commit
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr-diff.txt
+          git diff HEAD^ HEAD > push-diff.txt
 
-      - name: Use Diff in a Script
+      - name: Display Diff
         run: |
-          python process_diff.py pr-diff.txt
+          echo "Showing first 50 lines of the diff:"
+          head -n 50 push-diff.txt
+
+      - name: Run Diff Processing
