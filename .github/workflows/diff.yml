@@ -1,0 +1,22 @@
+name: Get PR Diff and Use in Script
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  get-pr-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Ensures we have at least one previous commit for diff
+
+      - name: Get PR Diff
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr-diff.txt
+
+      - name: Use Diff in a Script
+        run: |
+          python process_diff.py pr-diff.txt
