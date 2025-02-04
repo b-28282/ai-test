@@ -26,3 +26,5 @@ jobs:
 
       - name: Run Diff Processing Script
         run: python process_diff.py push-diff.txt
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
