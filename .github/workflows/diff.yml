@@ -3,7 +3,7 @@ name: Process Git Diff on Push
 on:
   push:
     branches:
-      - main  # Change to the branch you want to track
+      - main
 
 jobs:
   get-diff-on-push:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Ensure we get the previous commit for diff comparison
+          fetch-depth: 2
 
       - name: Get Diff from Last Commit
         run: |
