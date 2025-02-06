@@ -1,35 +1,86 @@
-name: Process Git Diff on Push
+name: Check code vulnerabilities
+description: Check the code for vulnerabilities using AI
 
-on:
-  push:
-    branches:
-      - main
+inputs:
+  azure_openai_model_name:
+    description: "Model used by the Agent"
+    required: false
+    default: 'gpt-4o-mini'
+  azure_openai_api_version:
+    description: "Azure API version"
+    required: false
+    default: '2024-08-01-preview'
+  azure_openai_endpoint:
+    description: "Azure endpoint url"
+    required: true
+  azure_openai_api_key:
+    description: "Azure API key"
+    required: true
+  custom_prompt:
+    description: "Additional prompt provided per application"
+    required: false
+    default: ''
+  ignored_files:
+    description: "Files to be ignored separated by commas"
+    required: false
+    default: ''
 
-jobs:
-  get-diff-on-push:
-    runs-on: ubuntu-latest
+outputs:
+  exit_code:
+    description: "Exit code of the check status script"
+    value: ${{ steps.output-script-result.outputs.exit_code }}
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+runs:
+  using: "composite"
+  steps:
+    - name: Set GitHub Path
+      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+      shell: bash
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        pip install -r requirements.txt
 
-      - name: Get Diff from Last Commit
-        run: |
-          git diff HEAD^ HEAD > push-diff.txt
+    - name: Get Diff from Last Commit
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.ignored_files }}" ]; then
+          git diff HEAD^ HEAD > ${{ github.action_path }}/push-diff.txt
+        else
+          # Convert comma-separated list to space-separated for git command
+          IGNORED_PATTERNS=$(echo "${{ inputs.ignored_files }}" | tr ',' ' ' | sed 's/[^ ]* */":(exclude)&"/g')
+          git diff HEAD^ HEAD -- . $IGNORED_PATTERNS > ${{ github.action_path }}/push-diff.txt
+        fi
 
-      - name: Display Diff
-        run: |
-          echo "Showing first 50 lines of the diff:"
-          head -n 50 push-diff.txt
+    - name: Run Diff Processing Script
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        python main.py push-diff.txt ${{ inputs.custom_prompt }}
+      env:
+        AZURE_OPENAI_MODEL_NAME: ${{ inputs.azure_openai_model_name }}
+        AZURE_OPENAI_ENDPOINT: ${{ inputs.azure_openai_endpoint }}
+        AZURE_OPENAI_KEY: ${{ inputs.azure_openai_api_key }}
+        AZURE_OPENAI_API_VERSION: ${{ inputs.azure_openai_api_version }}
 
-      - name: Install PydanticAI
-        run: |
-          pip install pydantic-ai
-
-
-      - name: Run Diff Processing Script
-        run: python process_diff.py push-diff.txt
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    - name: Create Comment
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+            const fs = require('fs');
+            const analysisResult = fs.readFileSync('${{ github.action_path }}/analysis_result.txt', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: analysisResult
+            })
